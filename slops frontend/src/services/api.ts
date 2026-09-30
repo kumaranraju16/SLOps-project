@@ -1,4 +1,6 @@
-export const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:8000';
+let currentBaseUrl = (import.meta as any).env?.VITE_API_URL || 'http://127.0.0.1:8000';
+
+export const getApiBaseUrl = () => currentBaseUrl;
 
 export interface BackendConversation {
   id: number;
@@ -53,31 +55,45 @@ export interface BackendCredentialCreate {
 }
 
 // -------------------------------------------------------------
-// Health Probe
+// Health Probe (checks 127.0.0.1 & localhost automatically)
 // -------------------------------------------------------------
 export async function checkBackendConnection(): Promise<boolean> {
-  try {
-    const res = await fetch(`${API_BASE_URL}/conversations`, {
-      method: 'GET',
-      headers: { 'Accept': 'application/json' },
-    });
-    return res.ok;
-  } catch {
-    return false;
+  const candidates = [
+    (import.meta as any).env?.VITE_API_URL,
+    'http://127.0.0.1:8000',
+    'http://localhost:8000',
+  ].filter(Boolean) as string[];
+
+  for (const url of candidates) {
+    try {
+      const res = await fetch(`${url}/conversations`, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' },
+      });
+      if (res.ok) {
+        currentBaseUrl = url;
+        return true;
+      }
+    } catch {
+      // continue to next URL candidate
+    }
   }
+  return false;
 }
+
+const API_BASE = () => currentBaseUrl;
 
 // -------------------------------------------------------------
 // Conversations & Chat
 // -------------------------------------------------------------
 export async function getConversations(): Promise<BackendConversation[]> {
-  const res = await fetch(`${API_BASE_URL}/conversations`);
+  const res = await fetch(`${API_BASE()}/conversations`);
   if (!res.ok) throw new Error(`Failed to fetch conversations: ${res.statusText}`);
   return res.json();
 }
 
 export async function createConversation(): Promise<BackendConversation> {
-  const res = await fetch(`${API_BASE_URL}/conversations`, {
+  const res = await fetch(`${API_BASE()}/conversations`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
   });
@@ -86,13 +102,13 @@ export async function createConversation(): Promise<BackendConversation> {
 }
 
 export async function getConversation(conversationId: number): Promise<BackendConversation> {
-  const res = await fetch(`${API_BASE_URL}/conversations/${conversationId}`);
+  const res = await fetch(`${API_BASE()}/conversations/${conversationId}`);
   if (!res.ok) throw new Error(`Failed to get conversation: ${res.statusText}`);
   return res.json();
 }
 
 export async function getMessages(conversationId: number): Promise<BackendMessage[]> {
-  const res = await fetch(`${API_BASE_URL}/conversations/${conversationId}/messages`);
+  const res = await fetch(`${API_BASE()}/conversations/${conversationId}/messages`);
   if (!res.ok) throw new Error(`Failed to fetch messages: ${res.statusText}`);
   return res.json();
 }
@@ -101,7 +117,7 @@ export async function sendChatMessage(
   conversationId: number,
   params: { message?: string; approved?: boolean }
 ): Promise<BackendChatResponse> {
-  const res = await fetch(`${API_BASE_URL}/conversations/${conversationId}/messages`, {
+  const res = await fetch(`${API_BASE()}/conversations/${conversationId}/messages`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
@@ -114,7 +130,7 @@ export async function sendChatMessage(
 }
 
 export async function deleteConversation(conversationId: number): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/conversations/${conversationId}`, {
+  const res = await fetch(`${API_BASE()}/conversations/${conversationId}`, {
     method: 'DELETE',
   });
   if (!res.ok) throw new Error(`Failed to delete conversation: ${res.statusText}`);
@@ -124,7 +140,7 @@ export async function deleteConversation(conversationId: number): Promise<void> 
 // Documents / Knowledge Base RAG
 // -------------------------------------------------------------
 export async function getDocuments(): Promise<BackendDocument[]> {
-  const res = await fetch(`${API_BASE_URL}/documents`);
+  const res = await fetch(`${API_BASE()}/documents`);
   if (!res.ok) throw new Error(`Failed to fetch documents: ${res.statusText}`);
   return res.json();
 }
@@ -133,7 +149,7 @@ export async function uploadDocument(file: File): Promise<BackendDocument> {
   const formData = new FormData();
   formData.append('file', file);
 
-  const res = await fetch(`${API_BASE_URL}/documents`, {
+  const res = await fetch(`${API_BASE()}/documents`, {
     method: 'POST',
     body: formData,
   });
@@ -145,11 +161,11 @@ export async function uploadDocument(file: File): Promise<BackendDocument> {
 }
 
 export function getDocumentDownloadUrl(documentId: number): string {
-  return `${API_BASE_URL}/documents/${documentId}/download`;
+  return `${API_BASE()}/documents/${documentId}/download`;
 }
 
 export async function deleteDocument(documentId: number): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/documents/${documentId}`, {
+  const res = await fetch(`${API_BASE()}/documents/${documentId}`, {
     method: 'DELETE',
   });
   if (!res.ok) throw new Error(`Failed to delete document: ${res.statusText}`);
@@ -159,13 +175,13 @@ export async function deleteDocument(documentId: number): Promise<void> {
 // Credentials Management
 // -------------------------------------------------------------
 export async function getCredentials(): Promise<BackendCredential[]> {
-  const res = await fetch(`${API_BASE_URL}/credentials`);
+  const res = await fetch(`${API_BASE()}/credentials`);
   if (!res.ok) throw new Error(`Failed to fetch credentials: ${res.statusText}`);
   return res.json();
 }
 
 export async function createCredential(data: BackendCredentialCreate): Promise<BackendCredential> {
-  const res = await fetch(`${API_BASE_URL}/credentials`, {
+  const res = await fetch(`${API_BASE()}/credentials`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -181,7 +197,7 @@ export async function updateCredential(
   credentialId: number,
   data: Partial<BackendCredentialCreate>
 ): Promise<BackendCredential> {
-  const res = await fetch(`${API_BASE_URL}/credentials/${credentialId}`, {
+  const res = await fetch(`${API_BASE()}/credentials/${credentialId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
@@ -191,7 +207,7 @@ export async function updateCredential(
 }
 
 export async function deleteCredential(credentialId: number): Promise<void> {
-  const res = await fetch(`${API_BASE_URL}/credentials/${credentialId}`, {
+  const res = await fetch(`${API_BASE()}/credentials/${credentialId}`, {
     method: 'DELETE',
   });
   if (!res.ok) throw new Error(`Failed to delete credential: ${res.statusText}`);

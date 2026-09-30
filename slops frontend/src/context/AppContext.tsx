@@ -268,12 +268,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [activeConversationId]);
 
-  // Probe backend on mount and periodically
+  // Probe backend on mount and adaptively (fast 2s poll until connected, then 10s)
   useEffect(() => {
     refreshBackendData();
-    const interval = setInterval(refreshBackendData, 12000);
+    const delay = isBackendConnected ? 10000 : 2000;
+    const interval = setInterval(refreshBackendData, delay);
     return () => clearInterval(interval);
-  }, [refreshBackendData]);
+  }, [refreshBackendData, isBackendConnected]);
 
   const activeConversation = conversations.find((c) => c.id === activeConversationId);
 
