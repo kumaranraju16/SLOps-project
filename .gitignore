@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Python Virtual Environments & Cache
+.venv/
+env/
+__pycache__/
+*.py[cod]
+
+# Secrets & Environment variables
+.env
+*.env
+
+# Builds & Outputs
+dist/
+.netlify/
+temp_pgvector/
+storage/
+final-year-backend-main/
+
+# OS / Editor files
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store

@@ -1,0 +1,85 @@
+services:
+  myapp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - target
+      - ollama
+      - agent-db
+      - app-db
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.0-flash}
+      - AGENT_DB_URI=${AGENT_DB_URI}
+      - APP_DB_URI=${APP_DB_URI}
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    ports:
+      - "8000:8000"
+    volumes:
+      - app-file-data:/app/storage/documents
+    networks:
+      - agent-network
+    
+  ollama:
+    image: ollama/ollama:latest
+
+    container_name: ollama
+
+    ports:
+      - "11434:11434"
+
+    volumes:
+      - ollama-data:/root/.ollama
+
+    networks:
+      - agent-network 
+  
+  target:
+    build:
+      context: ./targetContainer
+    container_name: target
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    networks:
+      - agent-network
+   
+  
+  agent-db:
+    image: postgres:17
+    container_name: agent-db
+    environment:
+      POSTGRES_USER: agent
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: agent_db
+    volumes:
+      - agent-postgres-data:/var/lib/postgresql/data
+    networks:
+      - agent-network
+  
+  app-db:
+    image: pgvector/pgvector:pg16
+    container_name: app-db
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: app_db
+    volumes:
+      - app-postgres-data:/var/lib/postgresql/data
+    networks:
+      - agent-network
+
+
+
+networks:
+  agent-network:
+    driver: bridge
+
+volumes:
+  ollama-data:
+  agent-postgres-data:
+  app-postgres-data:
+  app-file-data:
